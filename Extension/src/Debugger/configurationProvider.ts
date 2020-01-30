@@ -243,12 +243,12 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
                 ) {
 
                 const moreInfoMessage: string = localize("lldb.framework.more.info", "More Info");
-                const LLDBFrameworkMissingMessage: string = localize("ldlb.framework.not.found", "Missing 'LLDB.framework' for lldb-mi.");
+                const LLDBFrameworkMissingMessage: string = localize("lldb.framework.not.found", "Unable to locate 'LLDB.framework' for lldb-mi.");
 
                 vscode.window.showErrorMessage(LLDBFrameworkMissingMessage, moreInfoMessage)
                  .then(value => {
                     if (value === moreInfoMessage) {
-                        let helpURL: string = "https://aka.ms/VSCode-CPP-LLDBFrameworkNotFoundHelp";
+                        let helpURL: string = "https://aka.ms/vscode-cpptools/LLDBFrameworkNotFound";
                         vscode.env.openExternal(vscode.Uri.parse(helpURL));
                     }
                 });
@@ -280,7 +280,7 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
         searchPaths.forEach(searchPath => {
             outputChannel.appendLine(`\t${searchPath}`);
         });
-        outputChannel.appendLine(localize("lldb.install.help", "To resolve this issue, please either install XCode through the App Store or install XCode CLI with 'xcode-select --install'."));
+        outputChannel.appendLine(localize("lldb.install.help", "To resolve this issue, either install XCode through the Apple App Store or install the XCode Command Line Tools by running 'xcode-select --install' in a Terminal window."));
         logger.showOutputChannel();
 
         return false;
