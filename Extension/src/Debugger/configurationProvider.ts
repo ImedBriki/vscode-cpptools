@@ -188,7 +188,7 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
             if (config.type === 'cppvsdbg') {
                 // Fail if cppvsdbg type is running on non-Windows
                 if (os.platform() !== 'win32') {
-                    vscode.window.showWarningMessage(localize("debugger.not.available", "Debugger of type: '{0}' is only available on Windows. Use type: '{1}' on the current OS platform.", "cppvsdbg", "cppdbg"));
+                    logger.getOutputChannelLogger().showWarningMessage(localize("debugger.not.available", "Debugger of type: '{0}' is only available on Windows. Use type: '{1}' on the current OS platform.", "cppvsdbg", "cppdbg"));
                     return undefined;
                 }
 
@@ -242,12 +242,12 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
                 !this.hasLLDBFramework()
                 ) {
 
-                const moreInfoMessage: string = localize("lldb.framework.more.info", "More Info");
-                const LLDBFrameworkMissingMessage: string = localize("lldb.framework.not.found", "Unable to locate 'LLDB.framework' for lldb-mi.");
+                const installButton: string = localize("lldb.framework.install.xcode", "Installing XCode");
+                const LLDBFrameworkMissingMessage: string = localize("lldb.framework.not.found", "Unable to locate 'LLDB.framework' for lldb-mi. Please install XCode or XCode Command Line Tools.");
 
-                vscode.window.showErrorMessage(LLDBFrameworkMissingMessage, moreInfoMessage)
+                vscode.window.showErrorMessage(LLDBFrameworkMissingMessage, installButton)
                  .then(value => {
-                    if (value === moreInfoMessage) {
+                    if (value === installButton) {
                         let helpURL: string = "https://aka.ms/vscode-cpptools/LLDBFrameworkNotFound";
                         vscode.env.openExternal(vscode.Uri.parse(helpURL));
                     }
@@ -262,6 +262,7 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
 
     private hasLLDBFramework(): boolean {
         const LLDBFramework: string = "LLDB.framework";
+        // Note: When adding more search paths, make sure the shipped lldb-mi also has it. See Build/lldb-mi.yml and 'install_name_tool' commands.
         let searchPaths: string[] = [
             "/Library/Developer/CommandLineTools/Library/PrivateFrameworks", // XCode CLI
             "/Applications/Xcode.app/Contents/SharedFrameworks" // App Store XCode
@@ -269,6 +270,7 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
 
         for (const searchPath of searchPaths) {
             if (fs.existsSync(path.join(searchPath, LLDBFramework))) {
+                // Found a framework that 'lldb-mi' can use.
                 return true;
             }
         }
@@ -280,7 +282,8 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
         searchPaths.forEach(searchPath => {
             outputChannel.appendLine(`\t${searchPath}`);
         });
-        outputChannel.appendLine(localize("lldb.install.help", "To resolve this issue, either install XCode through the Apple App Store or install the XCode Command Line Tools by running 'xcode-select --install' in a Terminal window."));
+        const xcodeCLIInstallCmd: string = "xcode-select --install";
+        outputChannel.appendLine(localize("lldb.install.help", "To resolve this issue, either install XCode through the Apple App Store or install the XCode Command Line Tools by running '{0}' in a Terminal window.", xcodeCLIInstallCmd));
         logger.showOutputChannel();
 
         return false;
