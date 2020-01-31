@@ -1918,16 +1918,13 @@
       ]
     },
     {
-      "description": "LLDB 3.8.0 (OS X)",
-      "url": "https://go.microsoft.com/fwlink/?LinkID=817244",
+      "description": "LLDB-MI macOS",
+      "url": "https://go.microsoft.com/fwlink/?linkid=2116759",
       "platforms": [
         "darwin"
       ],
       "binaries": [
-        "./debugAdapters/lldb/bin/debugserver",
-        "./debugAdapters/lldb/bin/lldb-mi",
-        "./debugAdapters/lldb/bin/lldb-argdumper",
-        "./debugAdapters/lldb/bin/lldb-launcher"
+        "./debugAdapters/lldb/bin/lldb-mi"
       ]
     },
     {
