@@ -1918,11 +1918,25 @@
       ]
     },
     {
-      "description": "LLDB-MI macOS",
+      "description": "LLDB-MI (macOS Mojave and higher)",
       "url": "https://go.microsoft.com/fwlink/?linkid=2116759",
       "platforms": [
         "darwin"
       ],
+      "versionRegex": "10\\.(1[0-3]|[0-9])(\\..*)*$",
+      "matchVersion": false,
+      "binaries": [
+        "./debugAdapters/lldb/bin/lldb-mi"
+      ]
+    },
+    {
+      "description": "LLDB 3.8.0 (macOS High Sierra and lower)",
+      "url": "https://go.microsoft.com/fwlink/?LinkID=817244",
+      "platforms": [
+        "darwin"
+      ],
+      "versionRegex": "10\\.(1[0-3]|[0-9])(\\..*)*$",
+      "matchVersion": true,
       "binaries": [
         "./debugAdapters/lldb/bin/lldb-mi"
       ]

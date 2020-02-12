@@ -6,14 +6,17 @@
 import * as os from 'os';
 import * as util from './common';
 import { LinuxDistribution } from './linuxDistribution';
+import * as plist from 'plist';
+import * as fs from 'fs';
 
 export class PlatformInformation {
-    constructor(public platform: string, public architecture: string, public distribution: LinuxDistribution) { }
+    constructor(public platform: string, public architecture: string, public distribution: LinuxDistribution, public version: string) { }
 
     public static GetPlatformInformation(): Promise<PlatformInformation> {
         let platform: string = os.platform();
         let architecturePromise: Promise<string>;
         let distributionPromise: Promise<LinuxDistribution> = Promise.resolve<LinuxDistribution>(null);
+        let versionPromise: Promise<string> = Promise.resolve<string>(null);
 
         switch (platform) {
             case "win32":
@@ -27,12 +30,13 @@ export class PlatformInformation {
 
             case "darwin":
                 architecturePromise = PlatformInformation.GetUnixArchitecture();
+                versionPromise = PlatformInformation.GetDarwinVersion();
                 break;
         }
 
-        return Promise.all<string | LinuxDistribution>([architecturePromise, distributionPromise])
-            .then(([arch, distro]: [string, LinuxDistribution]) => {
-                return new PlatformInformation(platform, arch, distro);
+        return Promise.all<string | LinuxDistribution>([architecturePromise, distributionPromise, versionPromise])
+            .then(([arch, distro, version]: [string, LinuxDistribution, string]) => {
+                return new PlatformInformation(platform, arch, distro, version);
             });
     }
 
@@ -68,5 +72,12 @@ export class PlatformInformation {
                 }
                 return null;
             });
+    }
+
+    private static GetDarwinVersion(): Promise<string> {
+        const DARWIN_SYSTEM_VERSION_PLIST: string = "/System/Library/CoreServices/SystemVersion.plist";
+        const systemVersionPListBuffer: Buffer = fs.readFileSync(DARWIN_SYSTEM_VERSION_PLIST);
+        const systemVersionData: any = plist.parse(systemVersionPListBuffer.toString());
+        return systemVersionData.ProductVersion;
     }
 }

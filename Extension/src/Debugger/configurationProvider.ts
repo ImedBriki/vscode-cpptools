@@ -14,11 +14,13 @@ import * as Telemetry from '../telemetry';
 import { buildAndDebugActiveFileStr } from './extension';
 import * as logger from '../logger';
 import * as nls from 'vscode-nls';
+import * as plist from 'plist';
 
 import { IConfiguration, IConfigurationSnippet, DebuggerType, MIConfigurations, WindowsConfigurations, WSLConfigurations, PipeTransportConfigurations } from './configurations';
 import { parse } from 'jsonc-parser';
 import { PlatformInformation } from '../platform';
 import { Environment, ParsedEnvironmentFile } from './ParsedEnvironmentFile';
+import { PackageManager } from '../packageManager';
 
 nls.config({ messageFormat: nls.MessageFormat.bundle, bundleFormat: nls.BundleFormat.standalone })();
 const localize: nls.LocalizeFunc = nls.loadMessageBundle();
@@ -238,29 +240,80 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
             // Validate LLDB-MI
             if (os.platform() === 'darwin' && // Check for macOS
                 (!macOSMIMode || macOSMIMode === 'lldb') &&
-                !macOSMIDebuggerPath && // User did not provide custom lldb-mi
-                !this.hasLLDBFramework()
-                ) {
+                !macOSMIDebuggerPath // User did not provide custom lldb-mi
+            ) {
+                const frameworkPath: string = this.getLLDBFrameworkPath();
 
-                const installButton: string = localize("lldb.framework.install.xcode", "Installing XCode");
-                const LLDBFrameworkMissingMessage: string = localize("lldb.framework.not.found", "Unable to locate 'LLDB.framework' for lldb-mi. Please install XCode or XCode Command Line Tools.");
+                if (!frameworkPath) {
+                    const installButton: string = localize("lldb.framework.install.xcode", "Installing XCode");
+                    const LLDBFrameworkMissingMessage: string = localize("lldb.framework.not.found", "Unable to locate 'LLDB.framework' for lldb-mi. Please install XCode or XCode Command Line Tools.");
 
-                vscode.window.showErrorMessage(LLDBFrameworkMissingMessage, installButton)
-                 .then(value => {
-                    if (value === installButton) {
-                        let helpURL: string = "https://aka.ms/vscode-cpptools/LLDBFrameworkNotFound";
-                        vscode.env.openExternal(vscode.Uri.parse(helpURL));
-                    }
-                });
+                    vscode.window.showErrorMessage(LLDBFrameworkMissingMessage, installButton)
+                    .then(value => {
+                        if (value === installButton) {
+                            let helpURL: string = "https://aka.ms/vscode-cpptools/LLDBFrameworkNotFound";
+                            vscode.env.openExternal(vscode.Uri.parse(helpURL));
+                        }
+                    });
 
-                return undefined;
+                    return undefined;
+                } else if (!this.getLLDBFrameworkVersion(frameworkPath)) {
+                    const installButton: string = localize("lldbmi.install.3.8", "Install lldb-mi 3.8");
+                    const warningMessage: string = localize("older.lldb.expected", "Found an LLDB.framework older than 10.0. Please install lldb-mi 3.8 and point 'miDebuggerPath' to {0}.", path.join(util.extensionPath, 'debugAdapters', 'lldb', 'bin', 'lldb-mi'));
+                    vscode.window.showWarningMessage(warningMessage, installButton)
+                    .then(value => {
+                        if (value === installButton) {
+                            // No need for Platform Info, force downloading a package.
+                            const packageManager: PackageManager = new PackageManager(null);
+
+                            const packageName: string = "LLDB 3.8.0 (macOS High Sierra and lower)";
+
+                            packageManager.DownloadAndInstallPackageByDescription(packageName);
+                        }
+                    });
+
+                    // Continue on with warning.
+                }
             }
         }
         // if config or type is not specified, return null to trigger VS Code to open a configuration file https://github.com/Microsoft/vscode/issues/54213
         return config && config.type ? config : null;
     }
 
-    private hasLLDBFramework(): boolean {
+    private getLLDBFrameworkVersion(framework: string): boolean {
+        const outputChannel: logger.Logger = logger.getOutputChannelLogger();
+
+        const path: string = `${framework}/LLDB.framework/Versions/A/Resources/Info.plist`;
+        const key: string = "DTXcodeBuild";
+
+        if (!fs.existsSync(path)) {
+            outputChannel.appendLine(localize("xcode.info.missing", "Could not find Info for XCode at {0}.", path));
+            logger.showOutputChannel();
+            return false;
+        }
+
+        let contents: Buffer = fs.readFileSync(path);
+        let data: string = contents.toString();
+        let pListData: any = plist.parse(data);
+
+        // Format of version is "<VersionNumber><Letter><Number>..."
+        // E.g.
+        // XCode 9.0 : 9A235
+        // XCode 10.0 : 10A255
+        // XCode 11.0 : 11A420a
+        // XCode 11.3.1 : 11C505
+        const version: number = parseInt(pListData[key], 10);
+
+        if (isNaN(version)) {
+            outputChannel.appendLine(localize("xcode.version.invalid", "Invalid XCode Version. Found '{0}'.", pListData[key]));
+            logger.showOutputChannel();
+            return false;
+        }
+
+        return version >= 10;
+    }
+
+    private getLLDBFrameworkPath(): string {
         const LLDBFramework: string = "LLDB.framework";
         // Note: When adding more search paths, make sure the shipped lldb-mi also has it. See Build/lldb-mi.yml and 'install_name_tool' commands.
         let searchPaths: string[] = [
@@ -271,7 +324,7 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
         for (const searchPath of searchPaths) {
             if (fs.existsSync(path.join(searchPath, LLDBFramework))) {
                 // Found a framework that 'lldb-mi' can use.
-                return true;
+                return searchPath;
             }
         }
 
@@ -286,7 +339,7 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
         outputChannel.appendLine(localize("lldb.install.help", "To resolve this issue, either install XCode through the Apple App Store or install the XCode Command Line Tools by running '{0}' in a Terminal window.", xcodeCLIInstallCmd));
         logger.showOutputChannel();
 
-        return false;
+        return null;
     }
 
     private resolveEnvFile(config: vscode.DebugConfiguration, folder: vscode.WorkspaceFolder): void {

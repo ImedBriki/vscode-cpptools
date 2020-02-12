@@ -36,6 +36,13 @@ export interface IPackage {
     // Architectures for which the package is applicable
     architectures: string[];
 
+    // OS Version regex to check if package is applicable
+    versionRegex: string;
+
+    // a flag to indicate if 'versionRegex' should match or not match.
+    // Required if versionRegex is used. Default is false.
+    matchVersion: boolean;
+
     // Binaries in the package that should be executable when deployed
     binaries: string[];
 
@@ -150,9 +157,35 @@ export class PackageManager {
             .then((list) => {
                 return list.filter((value, index, array) => {
                     return (!value.architectures || value.architectures.indexOf(this.platformInfo.architecture) !== -1) &&
-                        (!value.platforms || value.platforms.indexOf(this.platformInfo.platform) !== -1);
+                        (!value.platforms || value.platforms.indexOf(this.platformInfo.platform) !== -1) &&
+                        (!this.platformInfo.version || !value.versionRegex || (
+                            value.matchVersion ?
+                                new RegExp(value.versionRegex).test(this.platformInfo.version) :
+                                !new RegExp(value.versionRegex).test(this.platformInfo.version)
+                        ));
                 });
             });
+    }
+
+    public async DownloadAndInstallPackageByDescription(packageDescription: string): Promise<void> {
+        return vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "C/C++ Extension",
+            cancellable: false
+        }, async (progress, token) => {
+            let pkg: IPackage = await this.GetPackageList()
+            .then((list) => {
+                for (let item of list) {
+                    if (item.description === packageDescription) {
+                         return item;
+                    }
+                }
+                return null;
+            });
+
+            await this.DownloadPackage(pkg, "", progress);
+            await this.InstallPackage(pkg, "", progress);
+        });
     }
 
     private async DownloadPackage(pkg: IPackage, progressCount: string, progress: vscode.Progress<{message?: string; increment?: number}>): Promise<void> {
