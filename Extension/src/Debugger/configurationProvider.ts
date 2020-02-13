@@ -255,7 +255,7 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
                     });
 
                     return undefined;
-                } 
+                }
             }
         }
         // if config or type is not specified, return null to trigger VS Code to open a configuration file https://github.com/Microsoft/vscode/issues/54213
