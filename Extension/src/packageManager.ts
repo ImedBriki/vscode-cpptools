@@ -167,27 +167,6 @@ export class PackageManager {
             });
     }
 
-    public async DownloadAndInstallPackageByDescription(packageDescription: string): Promise<void> {
-        return vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: "C/C++ Extension",
-            cancellable: false
-        }, async (progress, token) => {
-            let pkg: IPackage = await this.GetPackageList()
-            .then((list) => {
-                for (let item of list) {
-                    if (item.description === packageDescription) {
-                         return item;
-                    }
-                }
-                return null;
-            });
-
-            await this.DownloadPackage(pkg, "", progress);
-            await this.InstallPackage(pkg, "", progress);
-        });
-    }
-
     private async DownloadPackage(pkg: IPackage, progressCount: string, progress: vscode.Progress<{message?: string; increment?: number}>): Promise<void> {
         this.AppendChannel(localize("downloading.package", "Downloading package '{0}' ", pkg.description));
 
