@@ -183,7 +183,7 @@ export class PackageManager {
         }
 
         if (value.versionRegex) {
-            const regex = new RegExp(value.versionRegex);
+            const regex: RegExp = new RegExp(value.versionRegex);
 
             return (value.matchVersion ?
                 regex.test(this.platformInfo.version) :
