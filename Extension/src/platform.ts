@@ -8,6 +8,11 @@ import * as util from './common';
 import { LinuxDistribution } from './linuxDistribution';
 import * as plist from 'plist';
 import * as fs from 'fs';
+import * as logger from './logger';
+import * as nls from 'vscode-nls';
+
+nls.config({ messageFormat: nls.MessageFormat.bundle, bundleFormat: nls.BundleFormat.standalone })();
+const localize: nls.LocalizeFunc = nls.loadMessageBundle();
 
 export class PlatformInformation {
     constructor(public platform: string, public architecture: string, public distribution: LinuxDistribution, public version: string) { }
@@ -76,8 +81,26 @@ export class PlatformInformation {
 
     private static GetDarwinVersion(): Promise<string> {
         const DARWIN_SYSTEM_VERSION_PLIST: string = "/System/Library/CoreServices/SystemVersion.plist";
-        const systemVersionPListBuffer: Buffer = fs.readFileSync(DARWIN_SYSTEM_VERSION_PLIST);
-        const systemVersionData: any = plist.parse(systemVersionPListBuffer.toString());
-        return systemVersionData.ProductVersion;
+        let productDarwinVersion: string = "";
+        let errorMessage: string = "";
+
+        if (fs.existsSync(DARWIN_SYSTEM_VERSION_PLIST)) {
+            const systemVersionPListBuffer: Buffer = fs.readFileSync(DARWIN_SYSTEM_VERSION_PLIST);
+            const systemVersionData: any = plist.parse(systemVersionPListBuffer.toString());
+            if (systemVersionData) {
+                productDarwinVersion = systemVersionData.ProductVersion;
+            } else {
+                errorMessage = localize("missing.plist.productversion", "Could not get ProduceVersion from SystemVersion.plist");
+            }
+        } else {
+            errorMessage = localize("missing.darwin.systemversion.file", "Failed to find SystemVersion.plist in {0}.", DARWIN_SYSTEM_VERSION_PLIST);
+        }
+
+        if (errorMessage) {
+            logger.getOutputChannel().appendLine(errorMessage);
+            logger.showOutputChannel();
+        }
+
+        return Promise.resolve(productDarwinVersion);
     }
 }
