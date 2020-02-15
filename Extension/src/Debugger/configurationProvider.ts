@@ -235,23 +235,23 @@ class CppConfigurationProvider implements vscode.DebugConfigurationProvider {
             const macOSMIMode: string = config.osx?.MIMode ?? config.MIMode;
             const macOSMIDebuggerPath: string = config.osx?.miDebuggerPath ?? config.miDebuggerPath;
 
-            const lldb_10_x_path: string = path.join(util.extensionPath, "debugAdapters", "lldb-mi", "bin", "lldb-mi");
+            const lldb_mi_10_x_path: string = path.join(util.extensionPath, "debugAdapters", "lldb-mi", "bin", "lldb-mi");
 
             // Validate LLDB-MI
             if (os.platform() === 'darwin' && // Check for macOS
-                fs.existsSync(lldb_10_x_path) && // lldb-mi 10.x exists
+                fs.existsSync(lldb_mi_10_x_path) && // lldb-mi 10.x exists
                 (!macOSMIMode || macOSMIMode === 'lldb') &&
                 !macOSMIDebuggerPath // User did not provide custom lldb-mi
             ) {
                 const frameworkPath: string = this.getLLDBFrameworkPath();
 
                 if (!frameworkPath) {
-                    const installButton: string = localize("lldb.framework.install.xcode", "Installing XCode");
+                    const moreInfoButton: string = localize("lldb.framework.install.xcode", "More Info");
                     const LLDBFrameworkMissingMessage: string = localize("lldb.framework.not.found", "Unable to locate 'LLDB.framework' for lldb-mi. Please install XCode or XCode Command Line Tools.");
 
-                    vscode.window.showErrorMessage(LLDBFrameworkMissingMessage, installButton)
+                    vscode.window.showErrorMessage(LLDBFrameworkMissingMessage, moreInfoButton)
                     .then(value => {
-                        if (value === installButton) {
+                        if (value === moreInfoButton) {
                             let helpURL: string = "https://aka.ms/vscode-cpptools/LLDBFrameworkNotFound";
                             vscode.env.openExternal(vscode.Uri.parse(helpURL));
                         }
